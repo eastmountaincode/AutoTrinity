@@ -43,7 +43,7 @@ class AutoTrinity:
             self.log(f"Error in command {command}: {str(e)}")
             raise
 
-    def fastqc_analysis(self):
+    def fastqc_analysis_pre(self):
         fastqc_path = os.path.join(self.tools_dir, "FastQC", "fastqc")
         fastqc_output_dir = os.path.join(self.output_dir, "preprocessed_fastqc")
 
@@ -57,14 +57,41 @@ class AutoTrinity:
         self.run_command(command_2)
         self.log("FASTQC analysis completed.")
 
+    def remove_erroneous_kmers(self):
+        rcorrector_path = os.path.join(self.script_dir, "tools", "Rcorrector", "run_rcorrector.pl")
+        corrected_output_dir = self.output_dir
+
+        # Construct the command
+        command = f"perl {rcorrector_path} -t 32 -1 {self.fastq_file_1_path} -2 {self.fastq_file_2_path} -od {corrected_output_dir}"
+        self.run_command(command)
+        self.log("Erroneous k-mer removal completed (rcorrector).")
+
+    def discard_unfixable_read_pairs(self):
+        discard_script_path = os.path.join(self.tools_dir, "DiscardUnfixable.py")
+        corrected_fastq_1 = os.path.join(self.output_dir, f"{self.dir_name}_1.cor.fq")
+        corrected_fastq_2 = os.path.join(self.output_dir, f"{self.dir_name}_2.cor.fq")
+
+        # Run the DiscardUnfixable.py script
+        command = f"python3 {discard_script_path} -1 {corrected_fastq_1} -2 {corrected_fastq_2} -s {self.dir_name}"
+        self.run_command(command)
+        self.log("Discarding unfixable read pairs completed (DiscardUnfixable.py).")
+
+    def trim_adapters_and_low_quality_bases(self):
+        trim_galore_path = os.path.join(self.tools_dir, "TrimGalore-0.6.10", "trim_galore")
+        input_fastq_1 = os.path.join(self.output_dir, f"unfixrm_{self.dir_name}_1.cor.fq")
+        input_fastq_2 = os.path.join(self.output_dir, f"unfixrm_{self.dir_name}_2.cor.fq")
+
+        # Run TrimGalore
+        command = f"{trim_galore_path} --paired --retain_unpaired --phred33 --output_dir {self.output_dir} --length 36 -q 5 --stringency 1 -e 0.1 {input_fastq_1} {input_fastq_2}"
+        self.run_command(command)
+        self.log("Trimming of adapters and low-quality bases completed.")
+
 
     def execute_pipeline(self):
-        print(1)
         self.log("Starting the AutoTrinity Pipeline.")
-        print(2)
-        self.fastqc_analysis()
-        print(3)
-        # Call other methods in the order they should be executed
+        #self.fastqc_analysis_pre()
+        #self.remove_erroneous_kmers()
+        #self.discard_unfixable_read_pairs()
         self.log("AutoTrinity Pipeline completed.")
 
 def main():
