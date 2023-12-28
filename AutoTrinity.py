@@ -44,6 +44,35 @@ class AutoTrinity:
             self.log(f"Error in command {command}: {str(e)}")
             raise
 
+    def verify_required_tools(self):
+        required_tools = {
+            'FastQC': {'path': os.path.join(self.tools_dir, "FastQC", "fastqc"), 'test_command': '--version'},
+            'Rcorrector': {'path': os.path.join(self.tools_dir, "Rcorrector", "run_rcorrector.pl"), 'test_command': '-version', 'interpreter': 'perl'},
+            'TrimGalore': {'path': os.path.join(self.tools_dir, "TrimGalore-0.6.10", "trim_galore"), 'test_command': '--version'},
+            'Trinity': {'path': os.path.join(self.tools_dir, "trinityrnaseq-v2.15.1", "Trinity"), 'test_command': '--version'},
+            'Bowtie2': {'path': os.path.join(self.tools_dir, "bowtie2-2.5.2", "bowtie2"), 'test_command': '--version'},
+            'BUSCO': {'path': os.path.join(self.tools_dir, "busco-5.5.0", "src", "busco", "run_BUSCO.py"), 'test_command': '--version'},
+            'TransDecoder_LongOrfs': {'path': os.path.join(self.tools_dir, "TransDecoder", "TransDecoder.LongOrfs"), 'test_command': '--version'},
+            'TransDecoder_Predict': {'path': os.path.join(self.tools_dir, "TransDecoder", "TransDecoder.Predict"), 'test_command': '--version'}
+        }
+
+        for tool_name, tool_info in required_tools.items():
+            if not os.path.isfile(tool_info['path']):
+                raise FileNotFoundError(f"Required tool '{tool_name}' not found at '{tool_info['path']}'.")
+
+            command = []
+            if 'interpreter' in tool_info:  # Check if 'interpreter' key exists
+                command.append(tool_info['interpreter'])
+            command.append(tool_info['path'])
+            command.append(tool_info['test_command'])
+
+            try:
+                subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            except subprocess.CalledProcessError:
+                raise EnvironmentError(f"Tool '{tool_name}' at '{tool_info['path']}' cannot be executed. Please check installation.")
+ 
+
+
     def fastqc_analysis_pre(self):
         fastqc_path = os.path.join(self.tools_dir, "FastQC", "fastqc")
         fastqc_output_dir = os.path.join(self.output_dir, "preprocessed_fastqc")
@@ -223,21 +252,22 @@ class AutoTrinity:
 
 
     def execute_pipeline(self):
-        self.log("Starting the AutoTrinity Pipeline.")
-        self.fastqc_analysis_pre()
-        self.remove_erroneous_kmers()
-        self.discard_unfixable_read_pairs()
-        self.trim_adapters_and_low_quality_bases()
-        self.fastqc_analysis_post()
-        self.assemble_transcriptome_with_trinity()
-        self.move_trinity_files()
-        self.generate_alignment_summary_metrics()
-        self.bowtie_build_index()
-        self.run_bowtie2_alignment()
-        self.run_busco_analysis()
-        self.transdecoder_longorfs()
-        self.transdecoder_predict()
-        self.log("AutoTrinity Pipeline completed.")
+        #self.log("Starting the AutoTrinity Pipeline.")
+        self.verify_required_tools()
+        #self.fastqc_analysis_pre()
+        #self.remove_erroneous_kmers()
+        #self.discard_unfixable_read_pairs()
+        #self.trim_adapters_and_low_quality_bases()
+        #self.fastqc_analysis_post()
+        #self.assemble_transcriptome_with_trinity()
+        #self.move_trinity_files()
+        #self.generate_alignment_summary_metrics()
+        #self.bowtie_build_index()
+        #self.run_bowtie2_alignment()
+        #self.run_busco_analysis()
+        #self.transdecoder_longorfs()
+        #self.transdecoder_predict()
+        #self.log("AutoTrinity Pipeline completed.")
 
 def main():
     parser = argparse.ArgumentParser(description='AutoTrinity: An Automated Transcriptome Assembly Pipeline')
