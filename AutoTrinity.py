@@ -4,6 +4,7 @@ import argparse
 import os
 import subprocess
 from datetime import datetime
+import shutil
 
 class AutoTrinity:
     def __init__(self, dir_name):
@@ -38,7 +39,7 @@ class AutoTrinity:
     def run_command(self, command):
         self.log(f"Running command: {command}")
         try:
-            subprocess.run(command, shell=True, check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(command, shell=True, check=True)
         except subprocess.CalledProcessError as e:
             self.log(f"Error in command {command}: {str(e)}")
             raise
@@ -86,12 +87,156 @@ class AutoTrinity:
         self.run_command(command)
         self.log("Trimming of adapters and low-quality bases completed.")
 
+    def fastqc_analysis_post(self):
+        fastqc_path = os.path.join(self.tools_dir, "FastQC", "fastqc")
+        fastqc_output_dir = os.path.join(self.output_dir, "postprocessed_fastqc")
+
+        # Create the fastqc_output_dir if it doesn't exist
+        if not os.path.exists(fastqc_output_dir):
+            os.makedirs(fastqc_output_dir)
+
+        processed_fastq_1 = os.path.join(self.output_dir, f"unfixrm_{self.dir_name}_1.cor_val_1.fq")
+        processed_fastq_2 = os.path.join(self.output_dir, f"unfixrm_{self.dir_name}_2.cor_val_2.fq")
+
+        # Run FastQC on post-processed FASTQ files
+        command_1 = f"{fastqc_path} {processed_fastq_1} -o {fastqc_output_dir}"
+        command_2 = f"{fastqc_path} {processed_fastq_2} -o {fastqc_output_dir}"
+        self.run_command(command_1)
+        self.run_command(command_2)
+        self.log("FastQC analysis on post-processed reads completed.")
+
+    def assemble_transcriptome_with_trinity(self):
+        trinity_path = os.path.join(self.tools_dir, "trinityrnaseq-v2.15.1", "Trinity")
+        left_input = os.path.join(self.output_dir, f"unfixrm_{self.dir_name}_1.cor_val_1.fq")
+        right_input = os.path.join(self.output_dir, f"unfixrm_{self.dir_name}_2.cor_val_2.fq")
+        trinity_output_dir = os.path.join(self.output_dir, "trinity_out_dir")
+
+        # Run Trinity
+        command = f"{trinity_path} --seqType fq --left {left_input} --right {right_input} --CPU 32 --max_memory 100G --output {trinity_output_dir}"
+        self.run_command(command)
+        self.log("Transcriptome assembly with Trinity completed.")
+
+        # Move the Trinity output files
+        #for file in os.listdir(trinity_output_dir):
+        #    if file.startswith("Trinity"):
+        #        shutil.move(os.path.join(trinity_output_dir, file), self.output_dir)
+
+    def move_trinity_files(self):
+        trinity_output_dir = os.path.join(self.output_dir, "trinity_out_dir")
+        # Move the Trinity output files and directories
+        for item in os.listdir(self.output_dir):
+            if "Trinity" in item and "AutoTrinity" not in item:
+                source_path = os.path.join(self.output_dir, item)
+                dest_path = os.path.join(trinity_output_dir, item)
+
+                if os.path.isdir(source_path):
+                    shutil.move(source_path, dest_path)
+                elif os.path.isfile(source_path):
+                    shutil.move(source_path, dest_path)
+
+    def generate_alignment_summary_metrics(self):
+        trinity_stats_script = os.path.join(self.tools_dir, "trinityrnaseq-v2.15.1", "util", "TrinityStats.pl")
+        trinity_fasta = os.path.join(self.output_dir, "trinity_out_dir", "trinity_out_dir.Trinity.fasta")
+        stats_output = os.path.join(self.output_dir, f"{self.dir_name}_trinity_stats.metrics")
+
+        # Run TrinityStats.pl and redirect output to a file
+        command = f"perl {trinity_stats_script} {trinity_fasta} > {stats_output}"
+        self.run_command(command)
+        self.log("Basic alignment summary metrics generated.")
+
+
+    def bowtie_build_index(self):
+        trinity_fasta = os.path.join(self.output_dir, "trinity_out_dir", "trinity_out_dir.Trinity.fasta")
+
+        # Specify the output directory for the Bowtie index
+        bowtie_index_dir = os.path.join(self.output_dir, "bowtie_index")
+        os.makedirs(bowtie_index_dir, exist_ok=True)
+        bowtie_index_prefix = os.path.join(bowtie_index_dir, "trinity_index")
+
+        bowtie_build_path = os.path.join(self.tools_dir, "bowtie2-2.5.2", "bowtie2-build")
+        bowtie_build_command = f"{bowtie_build_path} --threads 16 {trinity_fasta} {bowtie_index_prefix}"
+        
+        # Run bowtie2-build
+        self.run_command(bowtie_build_command)
+        self.log(f"bowtie2-build --threads 16 {trinity_fasta} {bowtie_index_prefix}")
+
+    def run_bowtie2_alignment(self):
+        bowtie2_path = os.path.join(self.tools_dir, "bowtie2-2.5.2", "bowtie2")
+        bowtie_index_prefix = os.path.join(self.output_dir, "bowtie_index", "trinity_index")
+        left_input = os.path.join(self.output_dir, f"unfixrm_{self.dir_name}_1.cor_val_1.fq")
+        right_input = os.path.join(self.output_dir, f"unfixrm_{self.dir_name}_2.cor_val_2.fq")
+
+        bowtie_output_dir = os.path.join(self.dir_name, "bowtie_output")
+        os.makedirs(bowtie_output_dir, exist_ok=True)
+
+        align_stats_file = os.path.join(bowtie_output_dir, f"{self.dir_name}_align_stats.txt")
+        sam_output_file = os.path.join(bowtie_output_dir, f"{self.dir_name}_SAM_output.txt")
+        bowtie_align_summary = os.path.join(bowtie_output_dir, f"{self.dir_name}_bowtie_align_summary.txt")
+
+        # Run bowtie2 alignment
+        with open(bowtie_align_summary, 'w') as summary_file:
+            bowtie_command = f"{bowtie2_path} -p 25 -q --no-unal -k 20 -x {bowtie_index_prefix} -1 {left_input} -2 {right_input} --met-file {align_stats_file} -S {sam_output_file}"
+            subprocess.run(bowtie_command, shell=True, check=True, stdout=summary_file, stderr=subprocess.STDOUT)
+        
+        self.log("Bowtie2 alignment completed.")
+
+    def run_busco_analysis(self):
+        # Path to the run_BUSCO.py script
+        busco_script_path = os.path.join(self.tools_dir, "busco-5.5.0", "src", "busco", "run_BUSCO.py")
+
+        # Path to the input file (Trinity.fasta) and BUSCO output directory
+        trinity_fasta = os.path.join(self.output_dir, "trinity_out_dir", "trinity_out_dir.Trinity.fasta")
+        busco_output_dir = os.path.join(self.output_dir, "busco_output")
+        busco_lineages_path = "eukaryota_odb10"
+
+        # Construct the BUSCO command
+        busco_command = f"python3 {busco_script_path} -c 16 -o {busco_output_dir} -i {trinity_fasta} -l {busco_lineages_path} -m transcriptome"
+
+        # Run BUSCO
+        self.run_command(busco_command)
+        self.log("BUSCO analysis completed.")
+
+    def transdecoder_longorfs(self):
+        # Path to the TransDecoder.LongOrfs script
+        transdecoder_longorfs_path = os.path.join(self.tools_dir, "TransDecoder", "TransDecoder.LongOrfs")
+        trinity_fasta = os.path.join(self.output_dir, "trinity_out_dir", "trinity_out_dir.Trinity.fasta")
+
+        transdecoder_out = os.path.join(self.dir_name, "transdecoder_out")
+        os.makedirs(transdecoder_out, exist_ok=True)
+
+        # Construct and run the TransDecoder.LongOrfs command
+        longorfs_command = f"{transdecoder_longorfs_path} -t {trinity_fasta} --output_dir {transdecoder_out}"
+        self.run_command(longorfs_command)
+        self.log("TransDecoder LongOrfs analysis completed.")
+
+    def transdecoder_predict(self):
+        # Path to the TransDecoder.Predict script
+        transdecoder_predict_path = os.path.join(self.tools_dir, "TransDecoder", "TransDecoder.Predict")
+        trinity_fasta = os.path.join(self.output_dir, "trinity_out_dir", "trinity_out_dir.Trinity.fasta")
+
+        transdecoder_out = os.path.join(self.dir_name, "transdecoder_out")
+
+        # Construct and run the TransDecoder.Predict command
+        predict_command = f"{transdecoder_predict_path} -t {trinity_fasta} --output_dir {transdecoder_out}"
+        self.run_command(predict_command)
+        self.log("TransDecoder Predict analysis completed.")
+
 
     def execute_pipeline(self):
         self.log("Starting the AutoTrinity Pipeline.")
-        #self.fastqc_analysis_pre()
-        #self.remove_erroneous_kmers()
-        #self.discard_unfixable_read_pairs()
+        self.fastqc_analysis_pre()
+        self.remove_erroneous_kmers()
+        self.discard_unfixable_read_pairs()
+        self.trim_adapters_and_low_quality_bases()
+        self.fastqc_analysis_post()
+        self.assemble_transcriptome_with_trinity()
+        self.move_trinity_files()
+        self.generate_alignment_summary_metrics()
+        self.bowtie_build_index()
+        self.run_bowtie2_alignment()
+        self.run_busco_analysis()
+        self.transdecoder_longorfs()
+        self.transdecoder_predict()
         self.log("AutoTrinity Pipeline completed.")
 
 def main():
