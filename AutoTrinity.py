@@ -302,7 +302,7 @@ class AutoTrinity:
         start_time = datetime.now()
 
         self.log("Starting the AutoTrinity Pipeline.")
-        
+
         self.verify_required_tools()
         self.fastqc_analysis_pre()
         self.remove_erroneous_kmers()
@@ -322,6 +322,7 @@ class AutoTrinity:
         end_time = datetime.now()
 
         elapsed_time = end_time - start_time
+        
         self.log(f"AutoTrinity Pipeline completed. Total elapsed time: {elapsed_time}")
 
         self._generate_high_level_analytics()
