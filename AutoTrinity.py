@@ -5,6 +5,9 @@ import os
 import subprocess
 from datetime import datetime
 import shutil
+from Bio import SeqIO
+import json
+from datetime import datetime
 
 class AutoTrinity:
     def __init__(self, dir_name):
@@ -145,11 +148,6 @@ class AutoTrinity:
         self.run_command(command)
         self.log("Transcriptome assembly with Trinity completed.")
 
-        # Move the Trinity output files
-        #for file in os.listdir(trinity_output_dir):
-        #    if file.startswith("Trinity"):
-        #        shutil.move(os.path.join(trinity_output_dir, file), self.output_dir)
-
     def move_trinity_files(self):
         trinity_output_dir = os.path.join(self.output_dir, "trinity_out_dir")
         # Move the Trinity output files and directories
@@ -250,24 +248,83 @@ class AutoTrinity:
         self.run_command(predict_command)
         self.log("TransDecoder Predict analysis completed.")
 
+    def _analyze_transdecoder_output(self):
+        transdecoder_output_path = os.path.join(self.output_dir, "transdecoder_out", "trinity_out_dir.Trinity.fasta.transdecoder.pep")
+
+        total_orfs = 0
+        complete_orfs = 0
+
+        # Parsing the TransDecoder output file
+        with open(transdecoder_output_path, 'r') as file:
+            for record in SeqIO.parse(file, "fasta"):
+                total_orfs += 1
+                if 'type:complete' in record.description:
+                    complete_orfs += 1
+
+        # Logging the results
+        self.log(f"Total ORFs: {total_orfs}")
+        self.log(f"Complete ORFs: {complete_orfs}")
+
+    def _analyze_busco_output(self):
+        busco_json_path = os.path.join(self.output_dir, "busco_output", "short_summary.specific.eukaryota_odb10.busco_output.json")
+
+        with open(busco_json_path, 'r') as file:
+            busco_data = json.load(file)
+
+        complete_percentage = busco_data["results"]["Complete"]
+        total_markers = busco_data["lineage_dataset"]["number_of_buscos"]
+        complete_buscos = round((complete_percentage / 100) * int(total_markers))
+
+        self.log(f"BUSCO Completion Rate: {complete_percentage}% - {complete_buscos} out of {total_markers} total BUSCOs were identified as complete.")
+
+    def _analyze_bowtie2_output(self):
+        bowtie_output_path = os.path.join(self.output_dir, "bowtie_output", f"{self.dir_name}_bowtie_align_summary.txt")
+
+        with open(bowtie_output_path, 'r') as file:
+            lines = file.readlines()
+
+        # Extracting the overall alignment rate
+        overall_alignment_line = next((line for line in lines if "overall alignment rate" in line), None)
+        if overall_alignment_line:
+            overall_alignment_rate = overall_alignment_line.split('%')[0].strip()
+            self.log(f"Bowtie2 Overall Alignment Rate: {overall_alignment_rate}%")
+        else:
+            self.log("Bowtie2 Overall Alignment Rate: Not found in summary file.")
+
+
+    def _generate_high_level_analytics(self):
+        self.analyze_transdecoder_output()
+        self.analyze_busco_output()
+        self.analyze_bowtie2_output()
+
 
     def execute_pipeline(self):
-        #self.log("Starting the AutoTrinity Pipeline.")
+        start_time = datetime.now()
+
+        self.log("Starting the AutoTrinity Pipeline.")
+        
         self.verify_required_tools()
-        #self.fastqc_analysis_pre()
-        #self.remove_erroneous_kmers()
-        #self.discard_unfixable_read_pairs()
-        #self.trim_adapters_and_low_quality_bases()
-        #self.fastqc_analysis_post()
-        #self.assemble_transcriptome_with_trinity()
-        #self.move_trinity_files()
-        #self.generate_alignment_summary_metrics()
-        #self.bowtie_build_index()
-        #self.run_bowtie2_alignment()
-        #self.run_busco_analysis()
-        #self.transdecoder_longorfs()
-        #self.transdecoder_predict()
-        #self.log("AutoTrinity Pipeline completed.")
+        self.fastqc_analysis_pre()
+        self.remove_erroneous_kmers()
+        self.discard_unfixable_read_pairs()
+        self.trim_adapters_and_low_quality_bases()
+        self.fastqc_analysis_post()
+        self.assemble_transcriptome_with_trinity()
+        self.move_trinity_files()
+        self.generate_alignment_summary_metrics()
+        self.bowtie_build_index()
+        self.run_bowtie2_alignment()
+        self.run_busco_analysis()
+        self.transdecoder_longorfs()
+        self.transdecoder_predict()
+        self.log("AutoTrinity Pipeline completed.")
+
+        end_time = datetime.now()
+
+        elapsed_time = end_time - start_time
+        self.log(f"AutoTrinity Pipeline completed. Total elapsed time: {elapsed_time}")
+
+        self._generate_high_level_analytics()
 
 def main():
     parser = argparse.ArgumentParser(description='AutoTrinity: An Automated Transcriptome Assembly Pipeline')
