@@ -293,9 +293,9 @@ class AutoTrinity:
 
 
     def _generate_high_level_analytics(self):
-        self.analyze_transdecoder_output()
-        self.analyze_busco_output()
-        self.analyze_bowtie2_output()
+        self._analyze_transdecoder_output()
+        self._analyze_busco_output()
+        self._analyze_bowtie2_output()
 
 
     def execute_pipeline(self):
