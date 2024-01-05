@@ -25,15 +25,15 @@ git clone https://github.com/eastmountaincode/AutoTrinity.git
 ## Usage
 To run the AutoTrinity pipeline, navigate to the directory containing the AutoTrinity.py script and execute the following command:
 ```
-python3 AutoTrinity.py -i [folder_name]
+python3 AutoTrinity.py -i <folder_name>
 ```
 Where [folder_name] is the name of the directory containing your input .fastq files. This directory should contain two specific files: [folder_name]_1.fastq and [folder_name]_2.fastq.
 
 ## Input Files
-Ensure that your input directory ([folder_name]) has the following files:
+Ensure that your input directory (`<folder_name>`) has the following files:
 
-- [folder_name]_1.fastq: The first paired-end FASTQ file.
-- [folder_name]_2.fastq: The second paired-end FASTQ file.
+- `<folder_name>_1.fastq`: The first paired-end FASTQ file.
+- `<folder_name>_2.fastq`: The second paired-end FASTQ file.
 
 ## Output
 The output includes:
@@ -43,9 +43,9 @@ The output includes:
 - Trimmed FASTQ files.
 - Alignment statistics.
 - Assembled transcriptome in FASTA format. (at `/<input_folder>/trinity_out_dir/trinity_out_dir.Trinity.fasta`)
-- ORF analysis (at /[input_folder/transdecoder_out/])
+- ORF analysis (at `/<input_folder>/transdecoder_out/]`)
 - High-level analytics including ORF counts and BUSCO completion rates.
-- Logs of each step of the pipeline are written to [folder_name]_AutoTrinity.log in the input directory, providing details on the execution status and any errors encountered. This is also where you will find the high-level analytics.
+- Logs of each step of the pipeline are written to `<input_folder>_AutoTrinity.log`, providing details on the execution status and any errors encountered. This is also where you will find the high-level analytics.
 
 ## High-Level Analytics
 After pipeline execution, high-level analytics are generated, which include:
