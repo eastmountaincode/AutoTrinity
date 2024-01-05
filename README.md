@@ -27,7 +27,7 @@ To run the AutoTrinity pipeline, navigate to the directory containing the AutoTr
 ```
 python3 AutoTrinity.py -i <folder_name>
 ```
-Where [folder_name] is the name of the directory containing your input .fastq files. This directory should contain two specific files: [folder_name]_1.fastq and [folder_name]_2.fastq.
+Where `<folder_name>` is the name of the directory containing your input .fastq files.
 
 ## Input Files
 Ensure that your input directory (`<folder_name>`) has the following files:
