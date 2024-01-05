@@ -50,7 +50,7 @@ The output includes:
 ## High-Level Analytics
 After pipeline execution, high-level analytics are generated, which include:
 
-- Total and complete ORFs (Open Reading Frames).
+- Number of total and complete ORFs (Open Reading Frames).
 - BUSCO (Benchmarking Universal Single-Copy Orthologs) completion rate.
 - Overall alignment rate from Bowtie2.
 
