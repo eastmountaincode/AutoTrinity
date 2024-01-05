@@ -19,13 +19,14 @@ AutoTrinity is an automated pipeline for transcriptome assembly, based on the pi
 ## Installation
 Clone the AutoTrinity repository:
 ```bash
-git clone [URL to AutoTrinity repository]
+git clone https://github.com/eastmountaincode/AutoTrinity.git
+```
 
 ## Usage
 To run the AutoTrinity pipeline, navigate to the directory containing the AutoTrinity.py script and execute the following command:
-
-
+```
 python3 AutoTrinity.py -i [folder_name]
+```
 Where [folder_name] is the name of the directory containing your input .fastq files. This directory should contain two specific files: [folder_name]_1.fastq and [folder_name]_2.fastq.
 
 Input Files
