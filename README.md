@@ -1,7 +1,8 @@
 # AutoTrinity Pipeline
 
 ## Overview
-AutoTrinity is an automated pipeline for transcriptome assembly, designed to streamline various bioinformatics tools and processes. It facilitates the analysis of RNA sequencing data, performing quality control, error correction, trimming, alignment, and assembly tasks in a sequential and automated manner.
+AutoTrinity is an automated pipeline for transcriptome assembly, based on the pipeline outlined by the Harvard FAS informatics group here: https://web.archive.org/web/20221005185422/https://informatics.fas.harvard.edu/best-practices-for-de-novo-transcriptome-assembly-with-trinity.html
+
 
 ## Prerequisites
 - Python 3
