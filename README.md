@@ -56,3 +56,9 @@ After pipeline execution, high-level analytics are generated, which include:
 
 ## Author
 Andrew Boylan
+
+## License
+MIT License
+
+Copyright (c) 2024 Andrew Boylan
+
